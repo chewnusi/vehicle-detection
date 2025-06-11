@@ -25,7 +25,7 @@ def load_model(model_path):
     return YOLO(model_path)
 
 
-def detect_on_image(conf, model, iou=0.5, img_size=640, half=True):
+def detect_on_image(conf, model, iou=0.5, img_size=640):
     """
     Виконує детекцію на зображеннях.
     
@@ -34,7 +34,6 @@ def detect_on_image(conf, model, iou=0.5, img_size=640, half=True):
         model: Завантажена модель YOLO
         iou: Поріг IOU для NMS (default: 0.5)
         img_size: Розмір зображення для інференсу (default: 640)
-        half: Використовувати half-precision (FP16) (default: True)
     """
     st.title("🖼️ Обробка зображень")
     
@@ -46,7 +45,7 @@ def detect_on_image(conf, model, iou=0.5, img_size=640, half=True):
         
         with col2:
             img_array = np.array(image)
-            res = model.predict(img_array, conf=conf, iou=iou, imgsz=img_size, half=half)
+            res = model.predict(img_array, conf=conf, iou=iou, imgsz=img_size)
             annotated_img = res[0].plot()
             st.image(annotated_img, use_column_width=True)
         
@@ -86,7 +85,7 @@ def detect_on_image(conf, model, iou=0.5, img_size=640, half=True):
                 process_image(image)
 
 
-def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5, img_size=640):
+def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5, img_size=512):
     """
     Допоміжна функція: зчитує кадри із source та виконує детекцію об'єктів.
     Відображає результати детекції в реальному часі та зберігає оброблене відео.
@@ -98,7 +97,6 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5
         tracker: Конфігурація трекера (bytetrack.yaml, botsort.yaml)
         iou: Поріг IOU для NMS (default: 0.5)
         img_size: Розмір зображення для інференсу (default: 640)
-        half: Використовувати half-precision (FP16) (default: True)
     """
     try:
         vid_cap = cv2.VideoCapture(source)
@@ -247,7 +245,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5
         return None
 
 
-def play_stored_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=640, half=True):
+def play_stored_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=520):
     """
     Функція для обробки та відтворення відео:
     1. Користувач вибирає відео зі списку або завантажує своє
@@ -260,7 +258,6 @@ def play_stored_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=6
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
         iou: Поріг IOU для NMS (default: 0.5)
         img_size: Розмір зображення для інференсу (default: 640)
-        half: Використовувати half-precision (FP16) (default: True)
     """
     st.title("🎥 Обробка відео")
     
@@ -296,7 +293,7 @@ def play_stored_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=6
     
     if st.sidebar.button("Запуск детекції 🎯"):
         try:
-            processed_video_path = get_frames_and_detect(conf, model, video_path, tracker, iou, img_size, half)
+            processed_video_path = get_frames_and_detect(conf, model, video_path, tracker, iou, img_size)
             
             if processed_video_path and os.path.exists(processed_video_path):
                 file_size = os.path.getsize(processed_video_path) / (1024 * 1024)
@@ -321,7 +318,7 @@ def play_stored_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=6
             clean_temp_files()
 
 
-def play_youtube_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=640, half=True):
+def play_youtube_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=520):
     """
     Відтворення YouTube-відео за посиланням у реальному часі.
     Детекція + трекінг на кожному кадрі.
@@ -332,7 +329,6 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
         iou: Поріг IOU для NMS (default: 0.5)
         img_size: Розмір зображення для інференсу (default: 640)
-        half: Використовувати half-precision (FP16) (default: True)
     """
     youtube_url = st.sidebar.text_input("YouTube Video URL", "https://youtu.be/970Vdfu25yw") #https://www.youtube.com/watch?v=FQijTjkH7-0
     
@@ -358,7 +354,7 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=
             
             temp_file = download_youtube_to_temp(stream_url)
             
-            processed_video_path = get_frames_and_detect(conf, model, temp_file, tracker, iou, img_size, half)
+            processed_video_path = get_frames_and_detect(conf, model, temp_file, tracker, iou, img_size)
             
             if processed_video_path and os.path.exists(processed_video_path):
                 shutil.copy(processed_video_path, output_path)
@@ -531,7 +527,7 @@ def get_youtube_stream_url(youtube_url):
         raise Exception(f"Помилка при обробці відео: {str(e)}")
 
 
-def play_rtsp_stream(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=640, half=True):
+def play_rtsp_stream(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=520):
     """
     Відтворення RTSP стріму: користувач вводить URL, 
     далі кожен кадр обробляється та показується.
@@ -542,7 +538,6 @@ def play_rtsp_stream(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=64
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
         iou: Поріг IOU для NMS (default: 0.5)
         img_size: Розмір зображення для інференсу (default: 640)
-        half: Використовувати half-precision (FP16) (default: True)
     """
     # rtsp://rtspstream:NuNGxzjfxj6QeLHwbJ9us@zephyr.rtsp.stream/people
     source_rtsp = st.sidebar.text_input("RTSP stream URL:", "rtsp://rtspstream:NuNGxzjfxj6QeLHwbJ9us@zephyr.rtsp.stream/traffic")
@@ -552,4 +547,4 @@ def play_rtsp_stream(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=64
         if not source_rtsp:
             st.error("❌ Будь ласка, введіть коректну RTSP-адресу.")
             return
-        get_frames_and_detect(conf, model, source_rtsp, tracker, iou, img_size, half)
+        get_frames_and_detect(conf, model, source_rtsp, tracker, iou, img_size)

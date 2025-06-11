@@ -21,10 +21,10 @@ st.title("Military Equipment Detection 🔍")
 st.sidebar.header("⚙️ Налаштування моделі")
 
 # Confidence slider
-confidence = st.sidebar.slider("Виберіть рівень впевненості", 0.05, 1.0, 0.4)
+confidence = st.sidebar.slider("Виберіть рівень впевненості", 0.0, 1.0, 0.4)
 
 # IOU slider
-iou_threshold = st.sidebar.slider("Поріг IOU для NMS", 0.1, 0.9, 0.5, 0.1, 
+iou_threshold = st.sidebar.slider("Поріг IOU для NMS", 0.0, 1.0, 0.5,
                                  help="Intersection Over Union - нижчі значення видаляють більше перетинаючих боксів")
 
 # Advanced options

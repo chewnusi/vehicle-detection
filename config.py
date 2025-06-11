@@ -28,3 +28,16 @@ VIDEOS_DICT = {
 
 MODEL_DIR = ROOT / "weights"
 DETECTION_MODEL = MODEL_DIR / "best_last_colab_0306.pt"
+
+TRACKERS = {
+    "bytetrack": {
+        "name": "ByteTrack",
+        "config": "bytetrack.yaml",
+        "description": "Оптимальний для швидкої роботи та високої точності. Найкраще працює в умовах оклюзії (коли об'єкти перекривають один одного)."
+    },
+    "botsort": {
+        "name": "BotSORT",
+        "config": "botsort.yaml",
+        "description": "Кращий для складних сцен з багатьма об'єктами. Використовує додаткові візуальні особливості для більш стабільного відстеження, але працює повільніше."
+    }
+}

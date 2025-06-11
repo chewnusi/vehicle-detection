@@ -106,7 +106,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
                     break
                 
                 if tracker:
-                    res = model.track(frame, conf=conf, tracker=tracker)
+                    res = model.track(frame, conf=conf, tracker=tracker, persist=True)
                 else:
                     res = model.predict(frame, conf=conf, stream=True)
                 
@@ -139,7 +139,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
                 progress_bar.progress(min(frame_idx / frame_count, 1.0))
             
             if tracker:
-                res = model.track(frame, conf=conf, tracker=tracker)
+                res = model.track(frame, conf=conf, tracker=tracker, persist=True)
             else:
                 res = model.predict(frame, conf=conf, stream=True)
             

@@ -23,14 +23,6 @@ st.sidebar.header("⚙️ Налаштування моделі")
 # Confidence slider
 confidence = st.sidebar.slider("Виберіть рівень впевненості", 0.05, 1.0, 0.4)
 
-st.sidebar.subheader("🎯 Налаштування трекера")
-
-selected_tracker = st.sidebar.selectbox(
-    "Виберіть трекер",
-    list(config.TRACKER_TYPES.keys()),
-    index=list(config.TRACKER_TYPES.keys()).index(config.TRACKER_CONFIG['tracker_type'])
-)
-
 model_path = Path(config.DETECTION_MODEL)
 try:
     model = worker.load_model(model_path)
@@ -45,12 +37,12 @@ if source_radio == config.IMAGE:
     worker.detect_on_image(confidence, model)
 
 elif source_radio == config.VIDEO:
-    worker.play_stored_video(confidence, model, selected_tracker)
+    worker.play_stored_video(confidence, model)
 
 elif source_radio == config.RTSP:
-    worker.play_rtsp_stream(confidence, model, selected_tracker)
+    worker.play_rtsp_stream(confidence, model)
 
 elif source_radio == config.YOUTUBE:
-    worker.play_youtube_video(confidence, model, selected_tracker)
+    worker.play_youtube_video(confidence, model)
 else:
     st.error("❗ Будь ласка, оберіть коректний тип джерела!")

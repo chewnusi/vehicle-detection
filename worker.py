@@ -25,9 +25,16 @@ def load_model(model_path):
     return YOLO(model_path)
 
 
-def detect_on_image(conf, model):
+def detect_on_image(conf, model, iou=0.5, img_size=640, half=True):
     """
     Виконує детекцію на зображеннях.
+    
+    Args:
+        conf: Рівень впевненості для детекції
+        model: Завантажена модель YOLO
+        iou: Поріг IOU для NMS (default: 0.5)
+        img_size: Розмір зображення для інференсу (default: 640)
+        half: Використовувати half-precision (FP16) (default: True)
     """
     st.title("🖼️ Обробка зображень")
     
@@ -39,7 +46,7 @@ def detect_on_image(conf, model):
         
         with col2:
             img_array = np.array(image)
-            res = model.predict(img_array, conf=conf)
+            res = model.predict(img_array, conf=conf, iou=iou, imgsz=img_size, half=half)
             annotated_img = res[0].plot()
             st.image(annotated_img, use_column_width=True)
         
@@ -79,10 +86,19 @@ def detect_on_image(conf, model):
                 process_image(image)
 
 
-def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
+def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5, img_size=640):
     """
     Допоміжна функція: зчитує кадри із source та виконує детекцію об'єктів.
     Відображає результати детекції в реальному часі та зберігає оброблене відео.
+    
+    Args:
+        conf: Рівень впевненості для детекції
+        model: Завантажена модель YOLO
+        source: Шлях до відео файлу або RTSP-посилання
+        tracker: Конфігурація трекера (bytetrack.yaml, botsort.yaml)
+        iou: Поріг IOU для NMS (default: 0.5)
+        img_size: Розмір зображення для інференсу (default: 640)
+        half: Використовувати half-precision (FP16) (default: True)
     """
     try:
         vid_cap = cv2.VideoCapture(source)
@@ -99,6 +115,19 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
         frame_width = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
+        # Tracking configuration
+        track_config = {
+            'conf': conf,        
+            'iou': iou, 
+            'imgsz': img_size,          
+            'max_det': 300,
+            'tracker': tracker,     
+            'persist': True,   
+            'agnostic_nms': True,
+            'verbose': True,    
+            'half': False,
+        }
+        
         if source.startswith('rtsp://'):
             while vid_cap.isOpened():
                 success, frame = vid_cap.read()
@@ -106,7 +135,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
                     break
                 
                 if tracker:
-                    res = model.track(frame, conf=conf, tracker=tracker, persist=True)
+                    res = model.track(frame, **track_config)
                 else:
                     res = model.predict(frame, conf=conf, stream=True)
                 
@@ -139,7 +168,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
                 progress_bar.progress(min(frame_idx / frame_count, 1.0))
             
             if tracker:
-                res = model.track(frame, conf=conf, tracker=tracker, persist=True)
+                res = model.track(frame, **track_config)
             else:
                 res = model.predict(frame, conf=conf, stream=True)
             
@@ -218,7 +247,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
         return None
 
 
-def play_stored_video(conf, model, tracker="bytetrack.yaml"):
+def play_stored_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=640, half=True):
     """
     Функція для обробки та відтворення відео:
     1. Користувач вибирає відео зі списку або завантажує своє
@@ -229,6 +258,9 @@ def play_stored_video(conf, model, tracker="bytetrack.yaml"):
         conf: Рівень впевненості
         model: Завантажена модель YOLO
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
+        iou: Поріг IOU для NMS (default: 0.5)
+        img_size: Розмір зображення для інференсу (default: 640)
+        half: Використовувати half-precision (FP16) (default: True)
     """
     st.title("🎥 Обробка відео")
     
@@ -264,7 +296,7 @@ def play_stored_video(conf, model, tracker="bytetrack.yaml"):
     
     if st.sidebar.button("Запуск детекції 🎯"):
         try:
-            processed_video_path = get_frames_and_detect(conf, model, video_path, tracker)
+            processed_video_path = get_frames_and_detect(conf, model, video_path, tracker, iou, img_size, half)
             
             if processed_video_path and os.path.exists(processed_video_path):
                 file_size = os.path.getsize(processed_video_path) / (1024 * 1024)
@@ -289,7 +321,7 @@ def play_stored_video(conf, model, tracker="bytetrack.yaml"):
             clean_temp_files()
 
 
-def play_youtube_video(conf, model, tracker="bytetrack.yaml"):
+def play_youtube_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=640, half=True):
     """
     Відтворення YouTube-відео за посиланням у реальному часі.
     Детекція + трекінг на кожному кадрі.
@@ -298,6 +330,9 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml"):
         conf: Рівень впевненості
         model: Завантажена модель YOLO
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
+        iou: Поріг IOU для NMS (default: 0.5)
+        img_size: Розмір зображення для інференсу (default: 640)
+        half: Використовувати half-precision (FP16) (default: True)
     """
     youtube_url = st.sidebar.text_input("YouTube Video URL", "https://youtu.be/970Vdfu25yw") #https://www.youtube.com/watch?v=FQijTjkH7-0
     
@@ -323,7 +358,7 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml"):
             
             temp_file = download_youtube_to_temp(stream_url)
             
-            processed_video_path = get_frames_and_detect(conf, model, temp_file, tracker)
+            processed_video_path = get_frames_and_detect(conf, model, temp_file, tracker, iou, img_size, half)
             
             if processed_video_path and os.path.exists(processed_video_path):
                 shutil.copy(processed_video_path, output_path)
@@ -496,7 +531,7 @@ def get_youtube_stream_url(youtube_url):
         raise Exception(f"Помилка при обробці відео: {str(e)}")
 
 
-def play_rtsp_stream(conf, model, tracker="bytetrack.yaml"):
+def play_rtsp_stream(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=640, half=True):
     """
     Відтворення RTSP стріму: користувач вводить URL, 
     далі кожен кадр обробляється та показується.
@@ -505,6 +540,9 @@ def play_rtsp_stream(conf, model, tracker="bytetrack.yaml"):
         conf: Рівень впевненості
         model: Завантажена модель YOLO
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
+        iou: Поріг IOU для NMS (default: 0.5)
+        img_size: Розмір зображення для інференсу (default: 640)
+        half: Використовувати half-precision (FP16) (default: True)
     """
     # rtsp://rtspstream:NuNGxzjfxj6QeLHwbJ9us@zephyr.rtsp.stream/people
     source_rtsp = st.sidebar.text_input("RTSP stream URL:", "rtsp://rtspstream:NuNGxzjfxj6QeLHwbJ9us@zephyr.rtsp.stream/traffic")
@@ -514,4 +552,4 @@ def play_rtsp_stream(conf, model, tracker="bytetrack.yaml"):
         if not source_rtsp:
             st.error("❌ Будь ласка, введіть коректну RTSP-адресу.")
             return
-        get_frames_and_detect(conf, model, source_rtsp, tracker)
+        get_frames_and_detect(conf, model, source_rtsp, tracker, iou, img_size, half)

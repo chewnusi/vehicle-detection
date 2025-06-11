@@ -9,7 +9,7 @@ from PIL import Image
 
 # Налаштування сторінки
 st.set_page_config(
-    page_title="Military Equipment Detection 🎯",
+    page_title="Military Equipment Detection",
     page_icon="📡",
     layout="wide",
     initial_sidebar_state="expanded"

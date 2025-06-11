@@ -31,6 +31,30 @@ def detect_on_image(conf, model):
     """
     st.title("🖼️ Обробка зображень")
     
+    def process_image(image):
+        """Helper function to process a single image"""
+        col1, col2 = st.columns(2)
+        with col1:
+            st.image(image, use_column_width=True)
+        
+        with col2:
+            img_array = np.array(image)
+            res = model.predict(img_array, conf=conf)
+            annotated_img = res[0].plot()
+            st.image(annotated_img, use_column_width=True)
+        
+        st.write("")
+        with st.expander("Результати обробки"):
+            for i, box in enumerate(res[0].boxes):
+                data = box.data[0]
+                class_id = int(data[5])
+                class_name = config.CLASSES[class_id] if class_id < len(config.CLASSES) else f"Class {class_id}"
+                st.write(f"Об'єкт #{i+1}:")
+                st.write(f"- Клас: {class_name}")
+                st.write(f"- Впевненість: {data[4]*100:.2f}%")
+                st.write(f"- Координати: x1={data[0]:.1f}, y1={data[1]:.1f}, x2={data[2]:.1f}, y2={data[3]:.1f}")
+        st.write("")
+    
     image_option = st.sidebar.radio(
         "Виберіть джерело зображення",
         ("Вибрати зі списку", "Завантажити зображення")
@@ -41,58 +65,18 @@ def detect_on_image(conf, model):
             "Виберіть зображення...",
             list(config.IMAGES_DICT.keys())
         )
-        image_path = str(config.IMAGES_DICT[source_img])
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            original = Image.open(image_path)
-            st.image(original, use_column_width=True)
-        
-        with col2:
-            img_array = np.array(original)
-            res = model.predict(img_array, conf=conf)
-            annotated_img = res[0].plot()
-            st.image(annotated_img, use_column_width=True)
-        
-        st.write("")
-        with st.expander("Результати обробки"):
-            for i, box in enumerate(res[0].boxes):
-                data = box.data[0]
-                st.write(f"Об'єкт #{i+1}:")
-                st.write(f"- Клас: {data[5]}")
-                st.write(f"- Впевненість: {data[4]*100:.2f}%")
-                st.write(f"- Координати: x1={data[0]:.1f}, y1={data[1]:.1f}, x2={data[2]:.1f}, y2={data[3]:.1f}")
-        st.write("")
+        image = Image.open(str(config.IMAGES_DICT[source_img]))
+        process_image(image)
     else:
         source_imgs = st.sidebar.file_uploader(
             "Завантаження зображень...",
             type=("jpg", "jpeg", "png"),
             accept_multiple_files=True
         )
-        
         if source_imgs:
-            for i, source_img in enumerate(source_imgs):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    original = Image.open(source_img)
-                    st.image(original, use_column_width=True)
-                
-                with col2:
-                    img_array = np.array(original)
-                    res = model.predict(img_array, conf=conf)
-                    annotated_img = res[0].plot()
-                    st.image(annotated_img, use_column_width=True)
-                
-                st.write("")
-                with st.expander(f"Результати обробки для зображення {i+1}"):
-                    for i, box in enumerate(res[0].boxes):
-                        data = box.data[0]
-                        st.write(f"Об'єкт #{i+1}:")
-                        st.write(f"- Клас: {data[5]}")
-                        st.write(f"- Впевненість: {data[4]*100:.2f}%")
-                        st.write(f"- Координати: x1={data[0]:.1f}, y1={data[1]:.1f}, x2={data[2]:.1f}, y2={data[3]:.1f}")
-                st.write("")
+            for source_img in source_imgs:
+                image = Image.open(source_img)
+                process_image(image)
 
 
 def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):

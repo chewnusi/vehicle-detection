@@ -12,7 +12,7 @@ VIDEO = "Video"
 RTSP = "RTSP"
 YOUTUBE = "YouTube"
 
-CLASSES = ['']
+CLASSES = ["AFV", "APC", "Artillery", "Air-Defense"]
 SOURCES_LIST = [IMAGE, VIDEO, RTSP, YOUTUBE]
 
 IMAGES_DIR = ROOT / "images"

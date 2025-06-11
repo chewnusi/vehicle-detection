@@ -29,35 +29,70 @@ def detect_on_image(conf, model):
     """
     Виконує детекцію на зображеннях.
     """
-    source_imgs = st.sidebar.file_uploader(
-        "Завантаження зображень...",
-        type=("jpg", "jpeg", "png"),
-        accept_multiple_files=True
+    st.title("🖼️ Обробка зображень")
+    
+    image_option = st.sidebar.radio(
+        "Виберіть джерело зображення",
+        ("Вибрати зі списку", "Завантажити зображення")
     )
     
-    if source_imgs:
-        for i, source_img in enumerate(source_imgs):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                original = Image.open(source_img)
-                st.image(original, use_column_width=True)
-            
-            with col2:
-                img_array = np.array(original)
-                res = model.predict(img_array, conf=conf)
-                annotated_img = res[0].plot()
-                st.image(annotated_img, use_column_width=True)
-            
-            st.write("") 
-            with st.expander(f"Результати обробки для зображення {i+1}"):
-                for i, box in enumerate(res[0].boxes):
-                    data = box.data[0]
-                    st.write(f"Об'єкт #{i+1}:")
-                    st.write(f"- Клас: {data[5]}") 
-                    st.write(f"- Впевненість: {data[4]*100:.2f}%")
-                    st.write(f"- Координати: x1={data[0]:.1f}, y1={data[1]:.1f}, x2={data[2]:.1f}, y2={data[3]:.1f}")
-            st.write("") 
+    if image_option == "Вибрати зі списку":
+        source_img = st.sidebar.selectbox(
+            "Виберіть зображення...",
+            list(config.IMAGES_DICT.keys())
+        )
+        image_path = str(config.IMAGES_DICT[source_img])
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            original = Image.open(image_path)
+            st.image(original, use_column_width=True)
+        
+        with col2:
+            img_array = np.array(original)
+            res = model.predict(img_array, conf=conf)
+            annotated_img = res[0].plot()
+            st.image(annotated_img, use_column_width=True)
+        
+        st.write("")
+        with st.expander("Результати обробки"):
+            for i, box in enumerate(res[0].boxes):
+                data = box.data[0]
+                st.write(f"Об'єкт #{i+1}:")
+                st.write(f"- Клас: {data[5]}")
+                st.write(f"- Впевненість: {data[4]*100:.2f}%")
+                st.write(f"- Координати: x1={data[0]:.1f}, y1={data[1]:.1f}, x2={data[2]:.1f}, y2={data[3]:.1f}")
+        st.write("")
+    else:
+        source_imgs = st.sidebar.file_uploader(
+            "Завантаження зображень...",
+            type=("jpg", "jpeg", "png"),
+            accept_multiple_files=True
+        )
+        
+        if source_imgs:
+            for i, source_img in enumerate(source_imgs):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    original = Image.open(source_img)
+                    st.image(original, use_column_width=True)
+                
+                with col2:
+                    img_array = np.array(original)
+                    res = model.predict(img_array, conf=conf)
+                    annotated_img = res[0].plot()
+                    st.image(annotated_img, use_column_width=True)
+                
+                st.write("")
+                with st.expander(f"Результати обробки для зображення {i+1}"):
+                    for i, box in enumerate(res[0].boxes):
+                        data = box.data[0]
+                        st.write(f"Об'єкт #{i+1}:")
+                        st.write(f"- Клас: {data[5]}")
+                        st.write(f"- Впевненість: {data[4]*100:.2f}%")
+                        st.write(f"- Координати: x1={data[0]:.1f}, y1={data[1]:.1f}, x2={data[2]:.1f}, y2={data[3]:.1f}")
+                st.write("")
 
 
 def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
@@ -74,7 +109,10 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
             st.error("❌ Не вдається відкрити потік/відео.")
             return None
         
-        fps = vid_cap.get(cv2.CAP_PROP_FPS)
+        # Get original video properties
+        fps = int(vid_cap.get(cv2.CAP_PROP_FPS))
+        if fps == 0:  # If fps is 0, set a default value
+            fps = 30
         
         if source.startswith('rtsp://'):
             while vid_cap.isOpened():
@@ -124,7 +162,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
             
             st_frame.image(
                 processed_frame,
-                caption="Processing...",
+                caption="Обробка...",
                 use_column_width=True,
                 channels="BGR"
             )
@@ -142,19 +180,33 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
         
         try:       
             cmd = [
-                "ffmpeg", "-y",  
-                "-framerate", str(fps),  
+                "ffmpeg", "-y",
+                "-framerate", str(fps),
                 "-i", os.path.join(temp_frames_dir, "frame_%06d.jpg"),  
-                "-c:v", "libx264",  
-                "-profile:v", "main", 
+                "-c:v", "libx264", 
+                "-profile:v", "high",  
                 "-preset", "medium", 
+                "-pix_fmt", "yuv420p",
                 "-r", str(fps), 
-                "-tune", "zerolatency", 
-                "-crf", "23", 
-                "-pix_fmt", "yuv420p", 
-                "-movflags", "+faststart", 
+                "-movflags", "+faststart",
                 output_path
             ]
+
+            
+            # cmd = [
+            #     "ffmpeg", "-y",  
+            #     "-framerate", str(fps),  
+            #     "-i", os.path.join(temp_frames_dir, "frame_%06d.jpg"),  
+            #     "-c:v", "libx264",  
+            #     "-profile:v", "main", 
+            #     "-preset", "medium", 
+            #     "-r", str(fps), 
+            #     "-tune", "zerolatency", 
+            #     "-crf", "23", 
+            #     "-pix_fmt", "yuv420p", 
+            #     "-movflags", "+faststart", 
+            #     output_path
+            # ]
             
             save_msg = st.empty()
             save_msg.info("⏳ Збереження відео...")
@@ -281,7 +333,7 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml"):
     
     video_container = st.empty()
     
-    if st.sidebar.button("Play YouTube 🎬"):
+    if st.sidebar.button("Обробити відео 🎬"):
         if not youtube_url:
             st.error("❌ Введіть посилання на YouTube-відео.")
             return
@@ -397,7 +449,6 @@ def clean_temp_files():
     for temp_dir in temp_dirs:
         if os.path.exists(temp_dir):
             try:
-                # Видаляємо файли
                 for file in os.listdir(temp_dir):
                     file_path = os.path.join(temp_dir, file)
                     if os.path.isfile(file_path):

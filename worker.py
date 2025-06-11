@@ -98,8 +98,7 @@ def detect_on_image(conf, model):
 def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
     """
     Допоміжна функція: зчитує кадри із source та виконує детекцію об'єктів.
-    Відображає результати детекції в реальному часі.
-    Зберігає оброблене відео у стандартний MP4 файл для відео.
+    Відображає результати детекції в реальному часі та зберігає оброблене відео.
     """
     try:
         vid_cap = cv2.VideoCapture(source)
@@ -109,10 +108,12 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
             st.error("❌ Не вдається відкрити потік/відео.")
             return None
         
-        # Get original video properties
+        # Get video properties
         fps = int(vid_cap.get(cv2.CAP_PROP_FPS))
-        if fps == 0:  # If fps is 0, set a default value
+        if fps == 0:
             fps = 30
+        frame_width = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
         if source.startswith('rtsp://'):
             while vid_cap.isOpened():
@@ -136,7 +137,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
             
             vid_cap.release()
             clean_temp_files()
-            return None  
+            return None
         
         temp_frames_dir = "temp_frames"
         os.makedirs(temp_frames_dir, exist_ok=True)
@@ -178,35 +179,23 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
         os.makedirs(videos_dir, exist_ok=True)
         output_path = os.path.join(videos_dir, f"processed_{Path(source).stem}.mp4")
         
-        try:       
+        try:
+            fps_file = os.path.join(temp_frames_dir, "fps.txt")
+            with open(fps_file, "w") as f:
+                f.write(f"fps={fps}")
+            
             cmd = [
                 "ffmpeg", "-y",
                 "-framerate", str(fps),
-                "-i", os.path.join(temp_frames_dir, "frame_%06d.jpg"),  
-                "-c:v", "libx264", 
-                "-profile:v", "high",  
-                "-preset", "medium", 
+                "-i", os.path.join(temp_frames_dir, "frame_%06d.jpg"),
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-crf", "23",
+                "-vsync", "vfr",
                 "-pix_fmt", "yuv420p",
-                "-r", str(fps), 
                 "-movflags", "+faststart",
                 output_path
             ]
-
-            
-            # cmd = [
-            #     "ffmpeg", "-y",  
-            #     "-framerate", str(fps),  
-            #     "-i", os.path.join(temp_frames_dir, "frame_%06d.jpg"),  
-            #     "-c:v", "libx264",  
-            #     "-profile:v", "main", 
-            #     "-preset", "medium", 
-            #     "-r", str(fps), 
-            #     "-tune", "zerolatency", 
-            #     "-crf", "23", 
-            #     "-pix_fmt", "yuv420p", 
-            #     "-movflags", "+faststart", 
-            #     output_path
-            # ]
             
             save_msg = st.empty()
             save_msg.info("⏳ Збереження відео...")
@@ -233,7 +222,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml"):
         
         progress_bar.empty()
         st_frame.empty()
-        save_msg.empty()  
+        save_msg.empty()
         
         clean_temp_files()
         
@@ -326,10 +315,7 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml"):
         model: Завантажена модель YOLO
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
     """
-    youtube_url = st.sidebar.text_input("YouTube Video URL", "https://www.youtube.com/watch?v=FQijTjkH7-0")
-    
-    with st.sidebar.expander("Додаткові налаштування"):
-        debug_mode = st.checkbox("Режим діагностики", value=False)
+    youtube_url = st.sidebar.text_input("YouTube Video URL", "https://youtu.be/970Vdfu25yw") #https://www.youtube.com/watch?v=FQijTjkH7-0
     
     video_container = st.empty()
     
@@ -384,8 +370,6 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml"):
             
         except Exception as e:
             st.error(f"Помилка: {str(e)}")
-            if debug_mode:
-                st.code(traceback.format_exc())
             clean_temp_files()
 
 
@@ -409,7 +393,7 @@ def extract_youtube_id(youtube_url):
 
 def download_youtube_to_temp(stream_url):
     """
-    Завантажує відео з потоку у тимчасовий файл і повертає шлях до нього.
+    Завантажує відео з YouTube у тимчасовий файл і повертає шлях до нього.
     """
     
     temp_dir = "temp_youtube"
@@ -417,28 +401,35 @@ def download_youtube_to_temp(stream_url):
     temp_file = os.path.join(temp_dir, f"temp_video_{int(time.time())}.mp4")
     
     try:
-        response = requests.get(stream_url, stream=True)
-        response.raise_for_status()
+        ydl_opts = {
+            'format': '(232+234)/(230+234)/best',
+            'outtmpl': temp_file,
+            'quiet': True,
+            'no_warnings': True,
+            'allow_unplayable_formats': True
+        }
         
-        with open(temp_file, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([stream_url])
         
-        return temp_file
+        if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
+            return temp_file
+        else:
+            raise Exception("Файл не було завантажено")
+            
     except Exception as e:
         try:
-            ydl_opts = {
-                'format': 'bestvideo[height<=720][vcodec!*=av01]+bestaudio/best[height<=720]',
-                'outtmpl': temp_file,
-                'quiet': True
-            }
+            ydl_opts['format'] = 'best'
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                stream_info = {'url': stream_url}
-                ydl.process_ie_result(stream_info, download=True)
+                ydl.download([stream_url])
             
-            return temp_file
-        except Exception:
-            raise Exception(f"Не вдалося завантажити відео: {str(e)}")
+            if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
+                return temp_file
+            else:
+                raise Exception("Файл не було завантажено")
+                
+        except Exception as e2:
+            raise Exception(f"Не вдалося завантажити відео: {str(e2)}")
 
 
 def clean_temp_files():
@@ -464,15 +455,15 @@ def clean_temp_files():
 def get_youtube_stream_url(youtube_url):
     """
     За допомогою yt_dlp витягує пряме посилання на відео-потік YouTube.
-    Уникає формати AV1, які можуть викликати проблеми з декодуванням.
     """
     if not youtube_url:
         raise ValueError("URL відео не може бути порожнім")
     
     ydl_opts = {
-        'format': 'bestvideo[ext=mp4][vcodec!*=av01][vcodec^=avc]+bestaudio[ext=m4a]/best[ext=mp4][vcodec!*=av01]/best[vcodec!*=av01]/best',
+        'format': '(232+234)/(230+234)/best',  # Try 720p+audio, then 360p+audio, then best available
         'quiet': True,
-        'no_warnings': True
+        'no_warnings': True,
+        'allow_unplayable_formats': True
     }
     
     try:
@@ -483,25 +474,41 @@ def get_youtube_stream_url(youtube_url):
                 return info['url']
             
             if 'requested_formats' in info:
+                video_format = None
+                audio_format = None
+                
                 for fmt in info['requested_formats']:
-                    if fmt.get('vcodec', '').startswith('avc'):
-                        return fmt['url']
+                    if fmt.get('vcodec', 'none') != 'none':
+                        video_format = fmt
+                    if fmt.get('acodec', 'none') != 'none':
+                        audio_format = fmt
+                
+                if video_format:
+                    return video_format['url']
             
+            # Fallback to any available format with video
             if 'formats' in info:
-                for fmt in info['formats']:
-                    vcodec = fmt.get('vcodec', 'none')
-                    if (vcodec != 'none' and 'av01' not in vcodec and 
-                        fmt.get('height', 0) >= 360):
+                formats = sorted(info['formats'], 
+                              key=lambda x: (x.get('height', 0) or 0),
+                              reverse=True)
+                
+                for fmt in formats:
+                    if fmt.get('vcodec', 'none') != 'none':
                         return fmt['url']
             
-            if 'formats' in info and info['formats']:
-                for fmt in sorted(info['formats'], key=lambda x: x.get('height', 0), reverse=True):
-                    if fmt.get('vcodec', 'none') != 'none' and fmt.get('height', 0) > 0:
-                        return fmt['url']
-            
-            raise ValueError("Не вдалося отримати відповідний URL потоку")
+            raise ValueError("Не вдалося знайти відповідний формат відео")
             
     except Exception as e:
+        if 'Requested format is not available' in str(e):
+            # Try again with most permissive format
+            ydl_opts['format'] = 'best'
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(youtube_url, download=False)
+                    if 'url' in info:
+                        return info['url']
+            except Exception as e2:
+                raise Exception(f"Не вдалося отримати відео навіть з найпростішим форматом: {str(e2)}")
         raise Exception(f"Помилка при обробці відео: {str(e)}")
 
 

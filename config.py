@@ -28,7 +28,7 @@ VIDEOS_DICT = {
     "afv": VIDEO_DIR / "afv.mp4",
     "apc": VIDEO_DIR / "apc.mp4",
     "artillery": VIDEO_DIR / "artillery.mp4",
-    "air-defense": VIDEO_DIR / "air-defence.mp4",
+    "air-defense": VIDEO_DIR / "air-defense.mp4",
 }
 
 MODEL_DIR = ROOT / "weights"

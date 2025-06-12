@@ -19,6 +19,52 @@ import traceback
 import re
 import time
 import tempfile
+import threading
+
+
+class ThreadedCamera:
+    """
+    A class to read frames from a camera in a separate thread.
+    This is used to prevent the main thread from blocking while waiting for a new frame,
+    which is crucial for real-time applications like RTSP streaming to avoid lag.
+    """
+    def __init__(self, src):
+        # Use FFMPEG backend for better RTSP handling
+        self.capture = cv2.VideoCapture(src, cv2.CAP_FFMPEG)
+        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+        
+        # Daemon thread to read frames from the camera
+        self.thread = threading.Thread(target=self.update, args=())
+        self.thread.daemon = True
+        self.thread.start()
+        
+        self.status = False
+        self.frame = None
+        self.lock = threading.Lock()
+
+    def update(self):
+        """Continuously read frames from the camera."""
+        while True:
+            if self.capture.isOpened():
+                (status, frame) = self.capture.read()
+                if status:
+                    with self.lock:
+                        self.frame = frame
+            else:
+                break
+            time.sleep(0.01)  # Reduce CPU load
+
+    def read(self):
+        """Read the latest frame."""
+        with self.lock:
+            if self.frame is not None:
+                frame = self.frame.copy()
+                return True, frame
+            return False, None
+    
+    def release(self):
+        """Release the camera capture."""
+        self.capture.release()
 
 
 def draw_boxes(frame, results, model_names):
@@ -113,60 +159,74 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5
         img_size: Розмір зображення для інференсу (default: 520)
     """
     try:
+        if source.startswith('rtsp://'):
+            threaded_camera = ThreadedCamera(source)
+            st_frame = st.empty()
+
+            track_config = {
+                'conf': conf,
+                'iou': iou,
+                'imgsz': img_size,
+                'max_det': 300,
+                'tracker': tracker,
+                'persist': True,
+                'agnostic_nms': True,
+                'verbose': False,  # Disabled for performance
+                'half': False,
+                'show_conf': True,
+                'show_labels': True,
+            }
+
+            while True:
+                success, frame = threaded_camera.read()
+                if not success:
+                    time.sleep(0.1)
+                    continue
+
+                if tracker:
+                    res = model.track(frame, **track_config)
+                else:
+                    res = model.predict(frame, conf=conf)
+
+                processed_frame = draw_boxes(frame, res[0], model.names)
+
+                st_frame.image(
+                    processed_frame,
+                    caption="Обробка RTSP потоку...",
+                    use_column_width=True,
+                    channels="BGR"
+                )
+
+            threaded_camera.release()
+            return None
+
         vid_cap = cv2.VideoCapture(source)
         st_frame = st.empty()
-        
+
         if not vid_cap.isOpened():
             st.error("❌ Не вдається відкрити потік/відео.")
             return None
-        
-        # Get video properties
+
         fps = int(vid_cap.get(cv2.CAP_PROP_FPS))
         if fps == 0:
             fps = 30
         frame_width = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
-        # Tracking configuration
-        track_config = {
-            'conf': conf,        
-            'iou': iou, 
-            'imgsz': img_size,          
-            'max_det': 300,
-            'tracker': tracker,     
-            'persist': True,   
-            'agnostic_nms': True,
-            'verbose': True,    
-            'half': False,
 
+        track_config = {
+            'conf': conf,
+            'iou': iou,
+            'imgsz': img_size,
+            'max_det': 300,
+            'tracker': tracker,
+            'persist': True,
+            'agnostic_nms': True,
+            'verbose': True,
+            'half': False,
             'show_conf': True,
             'show_labels': True,
         }
-        
-        if source.startswith('rtsp://'):
-            while vid_cap.isOpened():
-                success, frame = vid_cap.read()
-                if not success:
-                    break
-                
-                if tracker:
-                    res = model.track(frame, **track_config)
-                else:
-                    res = model.predict(frame, conf=conf, stream=True)
-                
-                processed_frame = draw_boxes(frame, res[0], model.names)
-                
-                st_frame.image(
-                    processed_frame,
-                    caption="Processing...",
-                    use_column_width=True,
-                    channels="BGR"
-                )
-            
-            vid_cap.release()
-            clean_temp_files()
-            return None
-        
+
         temp_frames_dir = "temp_frames"
         os.makedirs(temp_frames_dir, exist_ok=True)
         
@@ -562,4 +622,4 @@ def play_rtsp_stream(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=52
         if not source_rtsp:
             st.error("❌ Будь ласка, введіть коректну RTSP-адресу.")
             return
-        get_frames_and_detect(conf, model, source_rtsp, tracker, iou, img_size)
+        get_frames_and_detect(conf, model, source_rtsp, tracker, iou, 416)

@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 from PIL import Image
 
-# Налаштування сторінки
 st.set_page_config(
     page_title="Military Equipment Detection",
     page_icon="📡",
@@ -17,24 +16,19 @@ st.set_page_config(
 
 st.title("Military Equipment Detection 🔍")
 
-# Бічна панель
 st.sidebar.header("⚙️ Налаштування моделі")
 
-# Confidence slider
 confidence = st.sidebar.slider("Виберіть рівень впевненості", 0.05, 1.0, 0.4)
 
-# IOU slider
 iou_threshold = st.sidebar.slider("Поріг IOU для NMS", 0.05, 1.0, 0.5,
                                  help="Intersection Over Union - нижчі значення видаляють більше перетинаючих боксів")
 
-# Advanced options
 with st.sidebar.expander("🛠️ Додаткові налаштування"):
-    # Image size input
     img_size = st.number_input(
         "Розмір зображення",
         min_value=128,
         max_value=1920,
-        value=640,
+        value=512,
         step=32,
         help="Більший розмір - вища точність, нижча швидкість"
     )

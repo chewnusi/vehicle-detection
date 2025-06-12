@@ -39,7 +39,7 @@ def load_model(model_path):
     return YOLO(model_path)
 
 
-def detect_on_image(conf, model, iou=0.5, img_size=640):
+def detect_on_image(conf, model, iou=0.5, img_size=520):
     """
     Виконує детекцію на зображеннях.
     
@@ -47,7 +47,7 @@ def detect_on_image(conf, model, iou=0.5, img_size=640):
         conf: Рівень впевненості для детекції
         model: Завантажена модель YOLO
         iou: Поріг IOU для NMS (default: 0.5)
-        img_size: Розмір зображення для інференсу (default: 640)
+        img_size: Розмір зображення для інференсу (default: 520)
     """
     st.title("🖼️ Обробка зображень")
     
@@ -110,7 +110,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5
         source: Шлях до відео файлу або RTSP-посилання
         tracker: Конфігурація трекера (bytetrack.yaml, botsort.yaml)
         iou: Поріг IOU для NMS (default: 0.5)
-        img_size: Розмір зображення для інференсу (default: 640)
+        img_size: Розмір зображення для інференсу (default: 520)
     """
     try:
         vid_cap = cv2.VideoCapture(source)
@@ -274,7 +274,7 @@ def play_stored_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=5
         model: Завантажена модель YOLO
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
         iou: Поріг IOU для NMS (default: 0.5)
-        img_size: Розмір зображення для інференсу (default: 640)
+        img_size: Розмір зображення для інференсу (default: 520)
     """
     st.title("🎥 Обробка відео")
     
@@ -345,7 +345,7 @@ def play_youtube_video(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=
         model: Завантажена модель YOLO
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
         iou: Поріг IOU для NMS (default: 0.5)
-        img_size: Розмір зображення для інференсу (default: 640)
+        img_size: Розмір зображення для інференсу (default: 520)
     """
     youtube_url = st.sidebar.text_input("YouTube Video URL", "https://youtu.be/970Vdfu25yw") #https://www.youtube.com/watch?v=FQijTjkH7-0
     
@@ -492,7 +492,7 @@ def get_youtube_stream_url(youtube_url):
         raise ValueError("URL відео не може бути порожнім")
     
     ydl_opts = {
-        'format': '(232+234)/(230+234)/best',  # Try 720p+audio, then 360p+audio, then best available
+        'format': '(232+234)/(230+234)/best',
         'quiet': True,
         'no_warnings': True,
         'allow_unplayable_formats': True
@@ -532,7 +532,6 @@ def get_youtube_stream_url(youtube_url):
             
     except Exception as e:
         if 'Requested format is not available' in str(e):
-            # Try again with most permissive format
             ydl_opts['format'] = 'best'
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -554,11 +553,10 @@ def play_rtsp_stream(conf, model, tracker="bytetrack.yaml", iou=0.5, img_size=52
         model: Завантажена модель YOLO
         tracker: Конфігурація трекера (default: "bytetrack.yaml")
         iou: Поріг IOU для NMS (default: 0.5)
-        img_size: Розмір зображення для інференсу (default: 640)
+        img_size: Розмір зображення для інференсу (default: 520)
     """
-    # rtsp://rtspstream:NuNGxzjfxj6QeLHwbJ9us@zephyr.rtsp.stream/people
-    source_rtsp = st.sidebar.text_input("RTSP stream URL:", "rtsp://rtspstream:NuNGxzjfxj6QeLHwbJ9us@zephyr.rtsp.stream/traffic")
-    st.sidebar.caption("Приклад: rtsp://rtspstream:NuNGxzjfxj6QeLHwbJ9us@zephyr.rtsp.stream/traffic")
+    source_rtsp = st.sidebar.text_input("RTSP stream URL:", "rtsp://127.0.0.1:8554/live/vehicles_stream")
+    st.sidebar.caption("Приклад: rtsp://127.0.0.1:8554/live/vehicles_stream")
 
     if st.sidebar.button("Start RTSP 🚀"):
         if not source_rtsp:

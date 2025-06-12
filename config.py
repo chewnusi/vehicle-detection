@@ -17,13 +17,18 @@ SOURCES_LIST = [IMAGE, VIDEO, RTSP, YOUTUBE]
 
 IMAGES_DIR = ROOT / "images"
 IMAGES_DICT = {
-    "image_1": IMAGES_DIR / "afv.jpg",
+    "afv": IMAGES_DIR / "afv.jpg",
+    "apc": IMAGES_DIR / "apc.webp",
+    "artillery": IMAGES_DIR / "artillery.jpg",
+    "air-defense": IMAGES_DIR / "air-defence.jpg",
 }
 
 VIDEO_DIR = ROOT / "videos"
 VIDEOS_DICT = {
-    "video_1": VIDEO_DIR / "afv_apc.mp4",
-    "video_short": VIDEO_DIR / "afv.mp4",
+    "afv": VIDEO_DIR / "afv.mp4",
+    "apc": VIDEO_DIR / "apc.mp4",
+    "artillery": VIDEO_DIR / "artillery.mp4",
+    "air-defense": VIDEO_DIR / "air-defence.mp4",
 }
 
 MODEL_DIR = ROOT / "weights"

@@ -1,6 +1,7 @@
 import streamlit as st
 import cv2
 from ultralytics import YOLO
+from ultralytics.utils.plotting import Annotator, colors
 import yt_dlp  
 import config
 from pathlib import Path
@@ -18,6 +19,19 @@ import traceback
 import re
 import time
 import tempfile
+
+
+def draw_boxes(frame, results, model_names):
+    """Draw bounding boxes on a frame."""
+    annotator = Annotator(frame, line_width=2, example=str(model_names))
+    if results.boxes is not None:
+        for box in results.boxes:
+            if box.cls is not None and box.conf is not None:
+                class_id = int(box.cls)
+                confidence = float(box.conf)
+                label = f'{model_names[class_id]} {confidence:.2f}'
+                annotator.box_label(box.xyxy[0], label, color=colors(class_id, True))
+    return annotator.result()
 
 
 def load_model(model_path):
@@ -76,7 +90,7 @@ def detect_on_image(conf, model, iou=0.5, img_size=640):
     else:
         source_imgs = st.sidebar.file_uploader(
             "Завантаження зображень...",
-            type=("jpg", "jpeg", "png"),
+            type=("jpg", "jpeg", "webp", "bmp", "dng", "mpo", "tif", "tiff", "pfm", "HEIC"),
             accept_multiple_files=True
         )
         if source_imgs:
@@ -124,6 +138,9 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5
             'agnostic_nms': True,
             'verbose': True,    
             'half': False,
+
+            'show_conf': True,
+            'show_labels': True,
         }
         
         if source.startswith('rtsp://'):
@@ -137,7 +154,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5
                 else:
                     res = model.predict(frame, conf=conf, stream=True)
                 
-                processed_frame = res[0].plot()
+                processed_frame = draw_boxes(frame, res[0], model.names)
                 
                 st_frame.image(
                     processed_frame,
@@ -170,7 +187,7 @@ def get_frames_and_detect(conf, model, source, tracker="bytetrack.yaml", iou=0.5
             else:
                 res = model.predict(frame, conf=conf, stream=True)
             
-            processed_frame = res[0].plot()
+            processed_frame = draw_boxes(frame, res[0], model.names)
             
             st_frame.image(
                 processed_frame,

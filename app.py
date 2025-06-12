@@ -21,10 +21,10 @@ st.title("Military Equipment Detection 🔍")
 st.sidebar.header("⚙️ Налаштування моделі")
 
 # Confidence slider
-confidence = st.sidebar.slider("Виберіть рівень впевненості", 0.0, 1.0, 0.4)
+confidence = st.sidebar.slider("Виберіть рівень впевненості", 0.05, 1.0, 0.4)
 
 # IOU slider
-iou_threshold = st.sidebar.slider("Поріг IOU для NMS", 0.0, 1.0, 0.5,
+iou_threshold = st.sidebar.slider("Поріг IOU для NMS", 0.05, 1.0, 0.5,
                                  help="Intersection Over Union - нижчі значення видаляють більше перетинаючих боксів")
 
 # Advanced options
@@ -34,7 +34,7 @@ with st.sidebar.expander("🛠️ Додаткові налаштування"):
         "Розмір зображення",
         min_value=128,
         max_value=1920,
-        value=512,
+        value=640,
         step=32,
         help="Більший розмір - вища точність, нижча швидкість"
     )

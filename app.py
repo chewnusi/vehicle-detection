@@ -16,32 +16,32 @@ st.set_page_config(
 
 st.title("Military Equipment Detection 🔍")
 
-st.sidebar.header("⚙️ Налаштування моделі")
+st.sidebar.header("⚙️ Model Settings")
 
-confidence = st.sidebar.slider("Виберіть рівень впевненості", 0.05, 1.0, 0.4)
+confidence = st.sidebar.slider("Select confidence level", 0.05, 1.0, 0.15)
 
-iou_threshold = st.sidebar.slider("Поріг IOU для NMS", 0.05, 1.0, 0.5,
-                                 help="Intersection Over Union - нижчі значення видаляють більше перетинаючих боксів")
+iou_threshold = st.sidebar.slider("IOU Threshold for NMS", 0.05, 1.0, 0.36,
+                                 help="Intersection Over Union - lower values remove more overlapping boxes")
 
-with st.sidebar.expander("🛠️ Додаткові налаштування"):
+with st.sidebar.expander("🛠️ Additional Settings"):
     img_size = st.number_input(
-        "Розмір зображення",
+        "Image Size",
         min_value=128,
         max_value=1920,
         value=512,
         step=32,
-        help="Більший розмір - вища точність, нижча швидкість"
+        help="Larger size - higher accuracy, lower speed"
     )
-    st.caption(f"Зображення буде оброблятися як {img_size}x{img_size} px")
+    st.caption(f"The image will be processed as {img_size}x{img_size} px")
 
-st.sidebar.header("Тип джерела")
-source_radio = st.sidebar.radio("Виберіть джерело", config.SOURCES_LIST)
+st.sidebar.header("Source Type")
+source_radio = st.sidebar.radio("Select source", config.SOURCES_LIST)
 
 tracker_option = "bytetrack" 
 if source_radio in [config.VIDEO, config.RTSP, config.YOUTUBE]:
-    st.sidebar.subheader("🎯 Вибір трекера")
+    st.sidebar.subheader("🎯 Tracker Selection")
     tracker_option = st.sidebar.radio(
-        "Оберіть трекер:",
+        "Select tracker:",
         list(config.TRACKERS.keys()),
         format_func=lambda x: config.TRACKERS[x]["name"]
     )
@@ -51,7 +51,7 @@ model_path = Path(config.DETECTION_MODEL)
 try:
     model = worker.load_model(model_path)
 except Exception as ex:
-    st.error(f"❌ Неможливо завантажити модель: {model_path}")
+    st.error(f"❌ Could not load model: {model_path}")
     st.error(ex)
 
 if source_radio == config.IMAGE:
@@ -66,4 +66,4 @@ elif source_radio == config.RTSP:
 elif source_radio == config.YOUTUBE:
     worker.play_youtube_video(confidence, model, config.TRACKERS[tracker_option]["config"], iou_threshold, img_size)
 else:
-    st.error("❗ Будь ласка, оберіть коректний тип джерела!")
+    st.error("❗ Please select a correct source type!")

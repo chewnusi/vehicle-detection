@@ -38,11 +38,11 @@ TRACKERS = {
     "bytetrack": {
         "name": "ByteTrack",
         "config": "trackers/bytetrack.yaml",
-        "description": "Оптимальний для швидкої роботи та високої точності. Найкраще працює в умовах оклюзії (коли об'єкти перекривають один одного)."
+        "description": "Optimal for fast performance and high accuracy. Works best in occlusion conditions (when objects overlap each other)."
     },
     "botsort": {
         "name": "BotSORT",
         "config": "trackers/botsort.yaml",
-        "description": "Кращий для складних сцен з багатьма об'єктами. Використовує додаткові візуальні особливості для більш стабільного відстеження, але працює повільніше."
+        "description": "Better for complex scenes with many objects. Uses additional visual features for more stable tracking, but runs slower."
     }
 }
